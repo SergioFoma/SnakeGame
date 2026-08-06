@@ -5,20 +5,52 @@
 
 #include "graphics.S"
 #include "debug.S"
+#include "parse_data.S"
 
 .global main
 
 .section .rodata
-.equ ROWS    , 25                                                 # количество строк
-.equ COLUMNS , 80                                                 # количество столбцов
+.equ ROWS    , 25                                                       # количество строк
+.equ COLUMNS , 80                                                       # количество столбцов
+.equ SNAKE_LEN, 5                                                       # начальная длина змеи
+.equ STEP     , 4                                                       # шаг, с которым нужно идти по массиву координат
+.equ INFO_Y, 26                                                         # координата y для вывода правил
+.equ INFO_X, 1                                                          # координаат x для вывода правил
+.equ INVITE_Y, 30                                                       # координата y для приглашения к вводу
+.equ INVITE_X, 1                                                        # координата x для приглашения к вводу
+
+.section .data
+delta_x: .word 0x0                                                      # приращение по оси x
+delta_y: .word -1                                                       # приращение по оси y
+head_x: .word 40, 40, 40, 40 ,40                                        # координаты x каждой части змеи начиная с головы
+head_y: .word 12, 13, 14, 15, 16                                        # координаты y каждой части змеи начиная с головы
+flag: .word 0x1                                                         # флаг столкновения со стенкой или с телом
 
 .text
 main:
-    init_board ROWS, COLUMNS
-    
-    return_cursor ROWS
+    init_board ROWS, COLUMNS, INFO_X, INFO_Y                            # инициализируем игровое поле
+    li t0, 0x0                                                          # t0 - нажатая клавиша
+    li t1, ' '                                                          # t1 = ' '
+    li t2, 0x1                                                          # t2 = 0x1 (флаг)
+    la t4, flag                                                         # загружаем адрес flag
+    main_loop:
+    lw t3, 0(t4)                                                        # загружаем в t3 флаг
+    beq t0, t1, end_main_loop                                           # если нажат пробел - выход из игры
+    bne t2, t3, end_main_loop
+    print_snake head_x, head_y, STEP, SNAKE_LEN                         # печатаем змею
+    return_cursor INVITE_Y                                              # переводим курсор для приграшения на ввод
+    print_invite INVITE_X, INVITE_Y                                     # приглашаем пользователя считать клавишу
+    print_symbol '\n'
+    read_key t0                                                         # считываем клавишу
+    clear_snake head_x, head_y, STEP, SNAKE_LEN                         # удаляем змею 
+    move_snake t0, head_x, head_y, STEP, SNAKE_LEN, delta_x, delta_y    # обновляем координаты змеи
+    collisions_checking head_x, head_y, STEP, SNAKE_LEN, flag, ROWS, COLUMNS
+    j main_loop
 
-    j exit
+    end_main_loop: 
+    return_cursor INVITE_Y                                              # перемещаем курсор
+    clear_line                                                          # очищаем строку
+    j exit                                                              # завершаем программу
 exit:
     li a0, 0x0
     ret
