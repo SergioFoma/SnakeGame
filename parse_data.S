@@ -265,26 +265,38 @@ user_answer: .byte 0x0, 0x0									# выделяем память под сч�
 # apple_x - координата x яблока (адрес)
 # apple_y - координата y яблока (адрес)
 # apple_flag - флаг на изменение положения яблока (адрес) 
-# используемые регистры: t0 - t6, s1
+# используемые регистры: t0 - t6, s1 - s5
 #
 .MACRO eat_apple_checking head_x, head_y, apple_x, apple_y, apple_flag
     
     save_all_regs                                          # сохраняем все регистры в стек 
     la t0, \head_x                                         # загрузка адреса head_x
-    lw t0, 0(t0)                                           # загружаем в t0 координату x головы
     la t1, \head_y                                         # загрузка адреса head_y
-    lw t1, 0(t1)                                           # загружаем в t1 координату y головы
     la t2, \apple_x                                        # загружаем в t2 адрес apple_x
     lw t2, 0(t2)                                           # загружаем в t2 координату x яблока
     la t3, \apple_y                                        # загружаем в t3 адрес apple_y
     lw t3, 0(t3)                                           # загружаем в t3 координату y яблока
-    xor t4, t0, t2                                         # t4 = 0, если t0 == t2
+    li s1, 0x0                                             # s1 = 0x0 - счетчик
+    li s2, SNAKE_LEN                                       # s2 хранит длину змеи
+    eat_apple_loop:
+    bgeu s1, s2, end_eat_loop                              # если s1 >= длина змеи - выходим из цикла
+    lw s3, 0(t0)                                           # загружаем координату x змеи
+    lw s4, 0(t1)                                           # загружаем координату y змеи
+    xor t4, s3, t2                                         # t4 = 0, если s3 == t2
     seqz t4, t4                                            # t4 = 1, если t4 == 0
-    xor t5, t1, t3                                         # t5 = 0, если t1 == t3
+    xor t5, s4, t3                                         # t5 = 0, если s4 == t3
     seqz t5, t5                                            # t5 = 1, если t5 == 0
     and t6, t4, t5                                         # t6 = t5 & t4
-    li s1, 0x1                                             # s1 = 0x1
-    bne t6, s1, not_change_flag
+    li s5, 0x1                                             # s1 = 0x1
+    beq t6, s5, change_flag
+    addi t0, t0, STEP                                      # сдвишаем указатель на массив
+    addi t1, t1, STEP                                      # сдвигаем указатель на массив
+    addi s1, s1, 0x1                                       # увеличиваем индекс
+    j eat_apple_loop
+    end_eat_loop:
+    j not_change_flag
+    change_flag:
+    li s1, 0x1
     la t0, \apple_flag                                     # загружаем в t0 адрес apple_flag
     sw s1, 0(t0)                                           # изменяем значение флага на 0x1
     not_change_flag:

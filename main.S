@@ -28,7 +28,7 @@ apple_x: .word 0x0                                                      # коо
 apple_y: .word 0x0                                                      # координата y яблока
 flag: .word 0x1                                                         # флаг столкновения со стенкой или с телом
 apple_flag: .word 0x1                                                   # флаг генерации позиции яблока
-seed: .word 0x0                                                         # зерно для генерации случайных чиел
+seed: .word 123456789                                                   # зерно для генерации случайных чиел
 
 .text
 main:
@@ -37,15 +37,15 @@ main:
     li t1, ' '                                                          # t1 = ' '
     li t2, 0x1                                                          # t2 = 0x1 (флаг)
     la t4, flag                                                         # загружаем адрес flag
-    init_seed seed                                                      # инициализируем зерно
+    #init_seed seed                                                      # инициализируем зерно
 
     main_loop:
     lw t3, 0(t4)                                                        # загружаем в t3 флаг
     beq t0, t1, end_main_loop                                           # если нажат пробел - выход из игры
     bne t2, t3, end_main_loop
-    print_snake head_x, head_y, STEP, SNAKE_LEN                         # печатаем змею
     generating_apple_pos apple_x, apple_y, apple_flag, seed, head_x, head_y
-    print_apple apple_x, apple_y                                        # печатаем яблоко             
+    print_apple apple_x, apple_y                                        # печатаем яблоко
+    print_snake head_x, head_y, STEP, SNAKE_LEN                         # печатаем змею
     return_cursor INVITE_Y                                              # переводим курсор для приграшения на ввод
     print_invite INVITE_X, INVITE_Y                                     # приглашаем пользователя считать клавишу
     print_symbol '\n'
