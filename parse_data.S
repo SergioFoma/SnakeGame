@@ -303,6 +303,46 @@ user_answer: .byte 0x0, 0x0									# выделяем память под сч�
     load_all_regs                                          # загружаем все регистры из стека
 .ENDM
 
+#
+# обновление очков игрока
+# apple_flag - было съедено яблоко или нет (адрес)
+# scores - очки игрока (адрес)
+# используемые регистры: t0, t1, t2, t3 
+# 
+.MACRO update_scores apple_flag, scores
+    save_all_regs                                          # сохраняем все регистры в стек
+    la t0, \apple_flag                                     # загружаем адрес apple_flag в t0
+    lw t0, 0(t0)                                           # загружаем в t0 значение apple_flag  
+    li t1, 0x1                                             # t1 = 0x1
+    bne t1, t0, not_change_scores 
+    add_scores:
+    la t2, \scores                                         # загружаем адрес очков
+    lw t3, 0(t2)                                           # загружаем значение очков
+    addi t3, t3, 0x1                                       # увеличиваем количество очков на 1.
+    sw t3, 0(t2)                                           # обновляем очки пользователя
+    not_change_scores:
+    load_all_regs                                          # загружаем все регистры из стека
+.ENDM
+
+#
+# проверка на выигрыш пользователя
+# scores - количество очков пользователя (адрес)
+# max_scores - максимальное количество очков (константа)
+# flag - флаг завершения игры (адрес)
+# используемые регистры: 
+#
+.MACRO check_win scores, max_scores, flag
+    save_all_regs                                          # сохраняем все регистры в стек
+    la t0, \scores                                         # загружаем адрес scores
+    lw t0, 0(t0)                                           # кладем в t0 количество очков игрока
+    li t1, \max_scores                                     # загружаем в t1 максимально количество очков
+    blt t0, t1, continue_game                              # если количество очков меньше максимума - продолжаем 
+    la t2, \flag                                           # загружаем адрес flag
+    li t3, 0x2                                             # t3 = 0x2
+    sw t3, 0(t2)                                           # flag принимает значение 2
+    continue_game:
+    load_all_regs                                          # загружаем все регистры из стека
+.ENDM
 
 .text
 #endif

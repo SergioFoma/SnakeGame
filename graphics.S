@@ -11,14 +11,24 @@
 #include "debug.S"
 
 .section .rodata
-first_rule:         .asciz "Enter 'a' to move to the left"
-second_rule:        .asciz "Enter 'w' to move straight"
-third_rule:         .asciz "Enter 'd' to move to the right"
-fourth_rule:        .asciz "Enter a space bar to complete the game"
-invite_msg:         .asciz "Enter your move: "
-clear_screen_ascii: .asciz "\x1B[2J"
-move_cursor_ascii:  .asciz "\x1b[%d;%dH"
-clear_line_ascii:   .asciz "\x1b[2K"
+first_rule:                 .asciz "Enter 'a' to move to the left"
+second_rule:                .asciz "Enter 'w' to move straight"
+third_rule:                 .asciz "Enter 'd' to move to the right"
+fourth_rule:                .asciz "Enter a space bar to complete the game"
+score_msg:                  .asciz "You have %d points from %d points"
+invite_msg:                 .asciz "Enter your move: "
+clear_screen_ascii:         .asciz "\x1B[2J"
+move_cursor_ascii:          .asciz "\x1b[%d;%dH"
+clear_line_ascii:           .asciz "\x1b[2K"
+clear_part_screen_ascii:    .asciz "\x1b[J"
+clear_prev_line_ascii:      .asciz "\x1b[1A\x1b[2K"
+win_msg:                    .asciz "\t\t\t\tYOU ARE WON"
+lose_msg:                   .asciz "\t\t\t\tGAME OVER"
+end_msg:                    .asciz "\t\t\tYOU HAVE COMPLETED THE GAME"
+
+.section .data
+end_line: .fill 80, 1, '='                                  # 80 элементов размером 1 байт со значением '='
+          .byte 0x0                                         # окончание си строки 
 
 #
 # очистка экрана
@@ -41,6 +51,28 @@ clear_line_ascii:   .asciz "\x1b[2K"
     call printf                                             # вызываем библиотечную функцию printf
     load_all_regs                                           # загружаем из стека сохраненные значения
 .ENDM
+
+#
+# очистка строки выше
+# используемые регистры: a0
+#
+.MACRO clear_prev_line 
+    save_all_regs                                           # сохраняем все регистры в стек
+    la a0, clear_prev_line_ascii                            # загружаем в a0 форматнуюю строку
+    call printf                                             # вызываем библиотечную функцию
+    load_all_regs                                           # загружаем все регистры из стека
+.ENDM
+#
+# очистить часть экрана
+# используемые регистры: a0
+#
+.MACRO clear_part_screen
+    save_all_regs                                           # сохраняем все регистры в стек
+    la a0, clear_part_screen_ascii                          # загружаем в a0 форматную строку
+    call printf                                             # вызываем библиотечную функцию
+    load_all_regs                                           # загружаем все регистры из стека
+.ENDM
+
 
 #
 # передвижение курсора
@@ -242,16 +274,18 @@ clear_line_ascii:   .asciz "\x1b[2K"
 # приглашение пользователя к ходу
 # invite_x - координата x выводимого сообщения
 # invite_y - координата y выводимого сообщения
-# используемые регистры: 
+# используемые регистры: t0, t1, a0 
 #
 .MACRO print_invite invite_x, invite_y
     save_all_regs                                           # сохраняем все регистры в стек
-    clear_line                                              # очистка строки
     li t0, \invite_x                                        # t0 = invite_x
     li t1, \invite_y                                        # t1 = invite_y
     move_cursor t0, t1
+    clear_line                                              # очистка строки
+    move_cursor t0, t1
     la a0, invite_msg                                       # загружаем в a0 адрес сообщения с приглашением сходить
     call printf                                             # вызов библиотечной функции
+    print_symbol '\n'
     load_all_regs                                           # загрузка регистров из стека
 .ENDM
 
@@ -286,6 +320,87 @@ clear_line_ascii:   .asciz "\x1b[2K"
     lw t1, 0(t1)                                            # t1 = координата y яблока
     move_cursor t0, t1
     print_symbol ' '                                        # печатаем пробел в текущей позиции курсора
+    load_all_regs                                           # загружаем все регистры из стека
+.ENDM
+
+#
+# вывод очков игрока
+# score_x - координата x (константа)
+# score_y - координата y (константа)
+# scores - количество очков (адрес)
+# max_scores - максимально число очков (константа)
+# используемые регистры: t0, t1, a0, a1, a2
+#
+.MACRO print_scores score_x, score_y, scores, max_scores
+    save_all_regs                                           # сохраняем все регистры в стек
+    li t0, \score_x                                         # t0 = score_x
+    li t1, \score_y                                         # t1 = score_y
+    move_cursor t0, t1
+    clear_line                                              # очищаем текущую строку
+    move_cursor t0, t1
+    la t0, \scores                                          # загружаем в t0 адрес scores
+    lw t0, 0(t0)                                            # загружаем в t0 количество очков 
+    la a0, score_msg                                        # загружаем адрес форматной строки
+    mv a1, t0                                               # копируем t0 в a1
+    li a2, \max_scores
+    call printf                                             # вызываем библиотечную функцию
+    load_all_regs                                           # загружаем все регистры из стека
+.ENDM
+
+#
+# печать полоски на ширину всего поля
+# используемые регистры: a0
+#
+.MACRO print_end_line
+    save_all_regs                                          # сохраняем все регистры в стек
+    la a0, end_line                                        # загружаем форматную строку
+    call printf                                            # вызываем библиотечную функцию
+    load_all_regs                                          # сохраняем все регистры из стека
+.ENDM
+
+
+#
+# печать сообщения о завершении игры 
+# info_x - координата x сообщения (константа)
+# info_y - координата y сообщения (константа)
+# flag - флаг завершения игры (адрес)
+# используемые регистры: 
+#
+.MACRO print_ending info_x, info_y, flag
+    save_all_regs                                           # сохраняем все регистры в стек 
+    li t0, \info_x                                          # загружаем координату x
+    li t1, \info_y                                          # загружаем координату y
+    move_cursor t0, t1                                 
+    clear_part_screen                                       # очищаем нижнюю часть экрана
+    move_cursor t0, t1                                         
+    la t2, \flag                                            # загруажаем адрес flag
+    lw t2, 0(t2)                                            # загружаем значение флага
+    li t3, 0x0                                              # t3 = 0x0
+    li t4, 0x1                                              # t4 = 0x1
+    li t5, 0x2                                              # t5 = 0x2
+    print_end_line                                          # печатам строку из символов =
+    addi t1, t1, 0x1                                        # увеличиваем ординату
+    move_cursor t0, t1
+    beq t3, t2, print_lose_game                             # если флаг == 0 - проигрыш игры
+    beq t4, t2, print_completed_game                        # если флаг == 1 - завершение игры
+    beq t5, t2, print_win_game                              # если флаг == 2 - выигрыш иры
+    
+    print_lose_game:
+    print_str lose_msg
+    j end_print_msg
+    print_completed_game:
+    print_str end_msg
+    j end_print_msg
+    print_win_game:
+    print_str win_msg
+    j end_print_msg
+
+    end_print_msg:
+    addi t1, t1, 0x1                                        # увеличиваем ординату
+    move_cursor t0, t1
+    print_end_line                                          # печатаем строку из символов =
+    addi t1, t1, 0x1                                        # увеличиваем оридинату
+    move_cursor t0, t1
     load_all_regs                                           # загружаем все регистры из стека
 .ENDM
 
