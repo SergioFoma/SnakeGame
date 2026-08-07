@@ -24,7 +24,11 @@ delta_x: .word 0x0                                                      # при
 delta_y: .word -1                                                       # приращение по оси y
 head_x: .word 40, 40, 40, 40 ,40                                        # координаты x каждой части змеи начиная с головы
 head_y: .word 12, 13, 14, 15, 16                                        # координаты y каждой части змеи начиная с головы
+apple_x: .word 0x0                                                      # координата x яблока
+apple_y: .word 0x0                                                      # координата y яблока
 flag: .word 0x1                                                         # флаг столкновения со стенкой или с телом
+apple_flag: .word 0x1                                                   # флаг генерации позиции яблока
+seed: .word 0x0                                                         # зерно для генерации случайных чиел
 
 .text
 main:
@@ -33,18 +37,24 @@ main:
     li t1, ' '                                                          # t1 = ' '
     li t2, 0x1                                                          # t2 = 0x1 (флаг)
     la t4, flag                                                         # загружаем адрес flag
+    init_seed seed                                                      # инициализируем зерно
+
     main_loop:
     lw t3, 0(t4)                                                        # загружаем в t3 флаг
     beq t0, t1, end_main_loop                                           # если нажат пробел - выход из игры
     bne t2, t3, end_main_loop
     print_snake head_x, head_y, STEP, SNAKE_LEN                         # печатаем змею
+    generating_apple_pos apple_x, apple_y, apple_flag, seed, head_x, head_y
+    print_apple apple_x, apple_y                                        # печатаем яблоко             
     return_cursor INVITE_Y                                              # переводим курсор для приграшения на ввод
     print_invite INVITE_X, INVITE_Y                                     # приглашаем пользователя считать клавишу
     print_symbol '\n'
     read_key t0                                                         # считываем клавишу
-    clear_snake head_x, head_y, STEP, SNAKE_LEN                         # удаляем змею 
+    clear_snake head_x, head_y, STEP, SNAKE_LEN                         # удаляем змею
+    clear_apple apple_x, apple_y                                        # удаляем яблоко 
     move_snake t0, head_x, head_y, STEP, SNAKE_LEN, delta_x, delta_y    # обновляем координаты змеи
     collisions_checking head_x, head_y, STEP, SNAKE_LEN, flag, ROWS, COLUMNS
+    eat_apple_checking head_x, head_y, apple_x, apple_y, apple_flag     # обработка взаимодействия змеи с яблоком
     j main_loop
 
     end_main_loop: 

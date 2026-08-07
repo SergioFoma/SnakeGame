@@ -7,6 +7,9 @@
 
 .section .rodata
 .equ COUNT, 0x2												# количество считываемых символов
+.equ MULT, 25173                                            # множитель в конгруэнтном методе
+.equ OFFSET, 13849                                          # приращение в конгруэнтном методе
+.equ MOD, 65536                                             # модуль в конгруэнтном методе
 
 .section .data
 user_answer: .byte 0x0, 0x0									# выделяем память под считываемые символы
@@ -167,6 +170,127 @@ user_answer: .byte 0x0, 0x0									# выделяем память под сч�
 	end_collision:
 	load_all_regs
 .ENDM
+
+#
+# инициализация зерна
+# seed - зерно размером 32 бита (адрес)
+# используемые регистры: 
+#
+.MACRO init_seed seed
+    save_all_regs                                          # сохраняем все регистры в стек
+    la t0, \seed                                           # загруажем адрес зерна
+    rdtime a0                                              # записывает 64 битное значение текущего времени
+    sw a0, 0(t0)                                           # записываем младшие 32 бита по адресу seed
+    load_all_regs                                          # загруажаем все регистры из стека
+.ENDM 
+
+#
+# генерация позиции яблока
+# apple_x - координата x яблока (адрес)
+# apple_y - координата y яблока (адрес)
+# apple_flag - флаг генерации (адрес)
+# seed - зерно (адрес)
+# head_x - массив с координатами x частей змеи (адрес)
+# head_y - массив с координатами y (адрес)
+# используемые регистры: t0 - t6, s1 - s11, a0 - a2
+#
+.MACRO generating_apple_pos apple_x, apple_y, apple_flag, seed, head_x, head_y
+
+    save_all_regs                                          # сохраняем все регистры в стек
+    la t0, \apple_flag                                     # загружаем адрес apple_flag в t0
+    lw t1, 0(t0)                                           # загружаем значение флага в t1
+    li t2, 0x1                                             # t2 = 0x1
+    bne t1, t2, not_generating                             # если флаг != 0x1 - не генерируем
+    li t1, MULT                                            # загружаем множитель
+    li t2, OFFSET                                          # загружаем сдвиг
+    li t3, MOD                                             # загружаем модуль
+    la t4, \seed                                           # загружаем адрес зерна
+    lw t5, 0(t4)                                           # загружаем значение зерна
+    li s1, ROWS                                            # загружаем количество строк
+    li s2, COLUMNS                                         # загружаем количество столбцов
+    li s5, 0x1                                             # s5 = 0x1
+    li s6, 0x0                                             # s6 = 0x0
+    generating_loop:
+    mul t6, t1, t5                                         # t6 = множитель * зерно
+    add t6, t6, t2                                         # t6 = множитель * зерно + смещение
+    rem t6, t6, t3                                         # t6 = (множитель * зерно + смещение) % модуль
+    rem s3, t6, s1                                         # координата y
+    mul t6, t1, t6                                         # t6 = множитель * новое_зерно
+    add t6, t6, t2                                         # t6 = множитель * новое_зерно + смещение
+    rem t6, t6, t3                                         # t6 = (множитель * новое_зерно + смещение) % модуль
+    rem s4, t6, s2                                         # координата x
+    mv t5, t6                                              # обновляем зерно
+    beq s3, s5, generating_loop                            # если y == 0x1 - снова генерируем
+    beq s3, s1, generating_loop                            # если y == rows - снова генерируем
+    beq s4, s5, generating_loop                            # если x == 0x1 - снова генерируем
+    beq s4, s2, generating_loop                            # если x == columns - снова генерируем
+    beq s3, s6, generating_loop                            # если y == 0x0 - снова генерируем
+    beq s4, s6, generating_loop                            # если x == 0x0 - снова генерируем
+    la s7, \head_x                                         # загружаем адрес head_x в регистр s7
+    la s8, \head_y                                         # загружаем адрес head_y в регистр s8
+    li s9, 0x0                                             # счетчик
+    li s10, SNAKE_LEN                                      # длина змеи
+    li s11, 0x1                                            # s1 = 0x1
+    start_checking_loop:
+    bgeu s9, s10, end_generating_loop                      # если индекс >= длина змеи - заканчиваем цикл
+    lw a0, 0(s7)                                           # загружаем координату x
+    xor a0, a0, s4                                         # проверяем на равенство head_x и apple_x
+    seqz a0, a0                                            # если a0 == 0, то a0 = 1
+    lw a1, 0(s8)                                           # загружаем координату y
+    xor a1, a1, s3                                         # проверяем на равенство head_y и apple_y
+    seqz a1, a1                                            # если a1 == 0, то a1 = 1
+    and a2, a0, a1                                         # a2 = a0 & a1
+    beq a2, s11, generating_loop                           # если координаты яблока совпали с координатами головы
+    addi s7, s7, STEP                                      # сдвигаем адрес на размер элемента
+    addi s8, s8, STEP                                      # сдвигаем адрес на размер элемента
+    addi s9, s9, 0x1                                       # увеличиваем счетчик на 1
+    j start_checking_loop
+
+    end_generating_loop:
+    li t1, 0x0                                             # t1 = 0x0
+    sw t1, 0(t0)                                           # загруажем по адресу apple_flag значение t1
+    la t0, \apple_x                                        # загруажем в t0 адрес apple_x
+    la t1, \apple_y                                        # загружаем в t1 адрес apple_y
+    sw s4, 0(t0)                                           # загружаем координату x по адресу apple_x
+    sw s3, 0(t1)                                           # загружаем координату y по адресу apple_y
+    sw t5, 0(t4)                                           # обновляем зерно
+    not_generating:
+    load_all_regs
+.ENDM
+
+#
+# обработка взаимодействия змеи с яблоком
+# head_x - массив с координатами x частей змеи (адрес)
+# head_y - массив с координатами y частей змеи (адрес)
+# apple_x - координата x яблока (адрес)
+# apple_y - координата y яблока (адрес)
+# apple_flag - флаг на изменение положения яблока (адрес) 
+# используемые регистры: t0 - t6, s1
+#
+.MACRO eat_apple_checking head_x, head_y, apple_x, apple_y, apple_flag
+    
+    save_all_regs                                          # сохраняем все регистры в стек 
+    la t0, \head_x                                         # загрузка адреса head_x
+    lw t0, 0(t0)                                           # загружаем в t0 координату x головы
+    la t1, \head_y                                         # загрузка адреса head_y
+    lw t1, 0(t1)                                           # загружаем в t1 координату y головы
+    la t2, \apple_x                                        # загружаем в t2 адрес apple_x
+    lw t2, 0(t2)                                           # загружаем в t2 координату x яблока
+    la t3, \apple_y                                        # загружаем в t3 адрес apple_y
+    lw t3, 0(t3)                                           # загружаем в t3 координату y яблока
+    xor t4, t0, t2                                         # t4 = 0, если t0 == t2
+    seqz t4, t4                                            # t4 = 1, если t4 == 0
+    xor t5, t1, t3                                         # t5 = 0, если t1 == t3
+    seqz t5, t5                                            # t5 = 1, если t5 == 0
+    and t6, t4, t5                                         # t6 = t5 & t4
+    li s1, 0x1                                             # s1 = 0x1
+    bne t6, s1, not_change_flag
+    la t0, \apple_flag                                     # загружаем в t0 адрес apple_flag
+    sw s1, 0(t0)                                           # изменяем значение флага на 0x1
+    not_change_flag:
+    load_all_regs                                          # загружаем все регистры из стека
+.ENDM
+
 
 .text
 #endif
