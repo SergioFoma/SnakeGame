@@ -6,10 +6,10 @@
 #define PARSE_DATA_S_
 
 .section .rodata
-.equ COUNT, 0x2												# количество считываемых символов
-.equ MULT, 25173                                            # множитель в конгруэнтном методе
-.equ OFFSET, 13849                                          # приращение в конгруэнтном методе
-.equ MOD, 65536                                             # модуль в конгруэнтном методе
+.equ COUNT  , 0x2											# количество считываемых символов
+.equ MULT   , 25173                                         # множитель в конгруэнтном методе
+.equ OFFSET , 13849                                         # приращение в конгруэнтном методе
+.equ MOD    , 65536                                         # модуль в конгруэнтном методе
 
 .section .data
 user_answer: .byte 0x0, 0x0									# выделяем память под считываемые символы
@@ -168,13 +168,13 @@ user_answer: .byte 0x0, 0x0									# выделяем память под сч�
 	sw t0, 0(t1)											# сохраняем значение t0 по адресу в t1
 	j end_collision
 	end_collision:
-	load_all_regs
+	load_all_regs                                           # загружаем все регистры из стека
 .ENDM
 
 #
 # инициализация зерна
 # seed - зерно размером 32 бита (адрес)
-# используемые регистры: 
+# используемые регистры: t0, a0 
 #
 .MACRO init_seed seed
     save_all_regs                                          # сохраняем все регистры в стек
@@ -255,7 +255,7 @@ user_answer: .byte 0x0, 0x0									# выделяем память под сч�
     sw s3, 0(t1)                                           # загружаем координату y по адресу apple_y
     sw t5, 0(t4)                                           # обновляем зерно
     not_generating:
-    load_all_regs
+    load_all_regs                                          # загружаем все регистры из стека
 .ENDM
 
 #
@@ -314,7 +314,7 @@ user_answer: .byte 0x0, 0x0									# выделяем память под сч�
     la t0, \apple_flag                                     # загружаем адрес apple_flag в t0
     lw t0, 0(t0)                                           # загружаем в t0 значение apple_flag  
     li t1, 0x1                                             # t1 = 0x1
-    bne t1, t0, not_change_scores 
+    bne t1, t0, not_change_scores                          # если apple_flag != 0x1 - не меняем очки
     add_scores:
     la t2, \scores                                         # загружаем адрес очков
     lw t3, 0(t2)                                           # загружаем значение очков
@@ -329,7 +329,7 @@ user_answer: .byte 0x0, 0x0									# выделяем память под сч�
 # scores - количество очков пользователя (адрес)
 # max_scores - максимальное количество очков (константа)
 # flag - флаг завершения игры (адрес)
-# используемые регистры: 
+# используемые регистры: t0, t1, t2, t3
 #
 .MACRO check_win scores, max_scores, flag
     save_all_regs                                          # сохраняем все регистры в стек
@@ -344,5 +344,5 @@ user_answer: .byte 0x0, 0x0									# выделяем память под сч�
     load_all_regs                                          # загружаем все регистры из стека
 .ENDM
 
-.text
+.text                                                      # переключаемся в секцию .text
 #endif

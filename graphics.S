@@ -105,7 +105,7 @@ end_line: .fill 80, 1, '='                                  # 80 элемент�
 # рисуем игровое поле
 # rows - количество строк в поле (константа)
 # columns - количество столбцов в поле (константа)
-# используемые регистры: t0, t1, t2, t3, t4, t5, t6
+# используемые регистры: t0 - t6
 #
 .MACRO print_board rows, columns
     save_all_regs                                           # сохраняем все регистры в стек
@@ -161,7 +161,7 @@ end_line: .fill 80, 1, '='                                  # 80 элемент�
 # head_y - массив с координатами y (адрес)
 # step - размер элемента массива в байтах (константа)
 # snake_len - длина змеи (константа)
-# используемые регистры: t0, t1, t2, t3, t4
+# используемые регистры: t0 - t6
 # 
 .MACRO print_snake head_x, head_y, step, snake_len
     save_all_regs                                          # сохраняем все регистры в стек
@@ -195,7 +195,7 @@ end_line: .fill 80, 1, '='                                  # 80 элемент�
 # head_y - массив с координатами y (адрес)
 # step - размер одного элемента в байтах (константа)
 # snake_len - длина змейки (константа)
-# используемые регистры: 
+# используемые регистры: t0 - t5
 #
 .MACRO clear_snake head_x, head_y, step, snake_len
     save_all_regs                                          # сохранить все регистры в стек
@@ -214,7 +214,7 @@ end_line: .fill 80, 1, '='                                  # 80 элемент�
     addi t2, t2, \step                                     # смещаем указатель второго массива
     j start_clear_loop
     end_clear_loop:
-    load_all_regs
+    load_all_regs                                          # загружаем все регистры из стека
 .ENDM
 
 
@@ -222,7 +222,7 @@ end_line: .fill 80, 1, '='                                  # 80 элемент�
 # печать информационного сообщения
 # info_x - координата x (константа)
 # info_y - координата y (константа)
-# используемые регистры: t0, t1, t2 
+# используемые регистры: t0, t1
 #
 .MACRO print_info info_x, info_y
     save_all_regs                                          # сохраняем все регистры в стек
@@ -239,7 +239,7 @@ end_line: .fill 80, 1, '='                                  # 80 элемент�
     addi t1, t1, 0x1                                       # t1 += 1
     move_cursor t0, t1                                     # перемещаем курсор на строку ниже
     print_str fourth_rule                                  # выводим четвертое информационное сообщенние
-    load_all_regs                                          # загружаем регистры из стека
+    load_all_regs                                          # загружаем все регистры из стека
 .ENDM
 
 #
@@ -293,7 +293,7 @@ end_line: .fill 80, 1, '='                                  # 80 элемент�
 # печатаем яблоко
 # apple_x - координата x яблока (адрес)
 # apple_y - координата y яблока (адрес)
-# используемые регистры: t0 - t3
+# используемые регистры: t0, t1, s1, s2
 #
 .MACRO print_apple apple_x, apple_y
     save_all_regs                                           # сохраняем все регистры в стек
@@ -364,7 +364,7 @@ end_line: .fill 80, 1, '='                                  # 80 элемент�
 # info_x - координата x сообщения (константа)
 # info_y - координата y сообщения (константа)
 # flag - флаг завершения игры (адрес)
-# используемые регистры: 
+# используемые регистры: t0 - t5
 #
 .MACRO print_ending info_x, info_y, flag
     save_all_regs                                           # сохраняем все регистры в стек 
@@ -386,13 +386,13 @@ end_line: .fill 80, 1, '='                                  # 80 элемент�
     beq t5, t2, print_win_game                              # если флаг == 2 - выигрыш иры
     
     print_lose_game:
-    print_str lose_msg
+    print_str lose_msg                                      # печатам сообщение о проигрыше
     j end_print_msg
     print_completed_game:
-    print_str end_msg
+    print_str end_msg                                       # печатаем сообщение об окончании игры
     j end_print_msg
     print_win_game:
-    print_str win_msg
+    print_str win_msg                                       # печатаем сообщение о победе
     j end_print_msg
 
     end_print_msg:
